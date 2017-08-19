@@ -288,6 +288,7 @@ void editorMoveCursor(int key) {
     if (E.cy != 0) {
       E.cy--;
     }
+    break;
   case ARROW_DOWN:
     if (E.cy != E.screenrows - 1) {
       E.cy++;
