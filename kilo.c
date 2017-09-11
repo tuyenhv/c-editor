@@ -315,6 +315,21 @@ void editorInsertChar(int c) {
   E.cx++;
 }
 
+void editorInsertNewLine() {
+  if (E.cx == 0) {
+    editorInsertRow(E.cy, "", 0);
+  } else {
+    erow *row = &E.row[E.cy];
+    editorInsertRow(E.cy + 1, &row->chars[E.cx], row->size - E.cx);
+    row = &E.row[E.cy];
+    row->size = E.cx;
+    row->chars[row->size] = '\0';
+    editorUpdateRow(row);
+  }
+  E.cy++;
+  E.cx = 0;
+}
+
 void editorDelChar() {
   if (E.cy == E.numrows)
     return;
@@ -591,7 +606,7 @@ void editorProcessKeypress() {
 
   switch (c) {
   case '\r':
-    /*TODO*/
+    editorInsertNewLine();
     break;
   case CTRL_KEY('q'):
     if (E.dirty && quit_times > 0) {
