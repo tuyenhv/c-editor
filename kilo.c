@@ -220,6 +220,20 @@ int editorRowCxToRx(erow *row, int cx) {
   return rx;
 }
 
+int editorRowRxToCx(erow *row, int rx) {
+  int cur_rx = 0;
+  int cx;
+  for (cx = 0; cx < row->size; cx++) {
+    if (row->chars[cx] == '\t')
+      cur_rx += (KILO_TAB_STOP - 1) - (cur_rx % KILO_TAB_STOP);
+    cur_rx++;
+
+    if (cur_rx > rx)
+      return cx;
+  }
+  return cx;
+}
+
 void editorUpdateRow(erow *row) {
   int tabs = 0;
   int j;
@@ -436,7 +450,7 @@ void editorFind() {
     char *match = strstr(row->render, query);
     if (match) {
       E.cy = i;
-      E.cx = match - row->render;
+      E.cx = editorRowRxToCx(row, match - row->render);
       E.rowoff = E.numrows;
       break;
     }
@@ -698,6 +712,10 @@ void editorProcessKeypress() {
       E.cx = E.row[E.cy].size;
     break;
 
+  case CTRL_KEY('f'):
+    editorFind();
+    break;
+
   case BACKSPACE:
   case CTRL_KEY('h'):
   case DEL_KEY:
@@ -768,7 +786,7 @@ int main(int argc, char *argv[]) {
     editorOpen(argv[1]);
   }
 
-  editorSetStatusMessage("HELP: CTRL-S = save | Ctrl-Q = quit");
+  editorSetStatusMessage("HELP: CTRL-S = save | Ctrl-Q = quit | Ctrl-F = find");
 
   while (1) {
     editorRefreshScreen();
