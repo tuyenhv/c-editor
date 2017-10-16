@@ -36,6 +36,8 @@ enum editorKey {
   PAGE_DOWN,
 };
 
+enum editorHighlight { HL_NORMAL = 0, HL_NUMBER };
+
 /*** data ***/
 
 typedef struct erow {
@@ -43,6 +45,7 @@ typedef struct erow {
   int rsize;
   char *chars;
   char *render;
+  unsigned char *hl;
 } erow;
 
 struct editorConfig {
@@ -207,6 +210,29 @@ int getWindowSize(int *rows, int *cols) {
   }
 }
 
+/** syntax highlighting **/
+
+void editorUpdateSyntax(erow *row) {
+  row->hl = realloc(row->hl, row->rsize);
+  memset(row->hl, HL_NORMAL, row->rsize);
+
+  int i;
+  for (i = 0; i < row->rsize; i++) {
+    if (isdigit(row->render[i])) {
+      row->hl[i] = HL_NUMBER;
+    }
+  }
+}
+
+int editorSyntaxToColor(int hl) {
+  switch (hl) {
+  case HL_NUMBER:
+    return 31;
+  default:
+    return 37;
+  }
+}
+
 /** row operations **/
 
 int editorRowCxToRx(erow *row, int cx) {
@@ -258,6 +284,8 @@ void editorUpdateRow(erow *row) {
   }
   row->render[idx] = '\0';
   row->rsize = idx;
+
+  editorUpdateSyntax(row);
 }
 
 void editorInsertRow(int at, char *s, size_t len) {
@@ -274,6 +302,7 @@ void editorInsertRow(int at, char *s, size_t len) {
 
   E.row[at].rsize = 0;
   E.row[at].render = NULL;
+  E.row[at].hl = NULL;
   editorUpdateRow(&E.row[at]);
 
   E.numrows++;
@@ -283,6 +312,7 @@ void editorInsertRow(int at, char *s, size_t len) {
 void editorFreeRow(erow *row) {
   free(row->render);
   free(row->chars);
+  free(row->hl);
 }
 
 void editorDelRow(int at) {
@@ -486,7 +516,8 @@ void editorFind() {
   int saved_coloff = E.coloff;
   int saved_rowoff = E.rowoff;
 
-  char *query = editorPrompt("Search: %s (Use ESC/Arrows/Enter)", editorFindCallback);
+  char *query =
+      editorPrompt("Search: %s (Use ESC/Arrows/Enter)", editorFindCallback);
   if (query) {
     free(query);
   } else {
@@ -569,7 +600,23 @@ void editorDrawRows(struct abuf *ab) {
         len = 0;
       if (len > E.screencols)
         len = E.screencols;
-      abAppend(ab, &E.row[filerow].render[E.coloff], len);
+
+      char *c = &E.row[filerow].render[E.coloff];
+      unsigned char *hl = &E.row[filerow].hl[E.coloff];
+      int j;
+      for (j = 0; j < len; j++) {
+        if (hl[j] == HL_NORMAL) {
+          abAppend(ab, "\x1b[39m", 5);
+          abAppend(ab, &c[j], 1);
+        } else {
+          int color = editorSyntaxToColor(hl[j]);
+          char buf[16];
+          int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+          abAppend(ab, buf, clen);
+          abAppend(ab, &c[j], 1);
+        }
+      }
+      abAppend(ab, "\x1b[39m", 5);
     }
 
     abAppend(ab, "\x1b[K", 3);
