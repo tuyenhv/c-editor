@@ -1,9 +1,2 @@
-123 abcd 324
 To jest Audi RS-4
-
 To Audi to bardzo fajny samochód z silnikiem 4.1 V8 o mocy 420 KM.
-
-test
-test
-a ma psa
-
